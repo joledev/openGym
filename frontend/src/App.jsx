@@ -53,6 +53,8 @@ import { useTour } from './lib/tour.js'
 import { useTourOffer } from './lib/tour-offer.js'
 import { exitWorkoutEdit, startFlow, beginWorkout, bwSheet, finishWorkoutNow, confirmSheet } from './sheets.jsx'
 import { BrandMark } from './components/BrandLogo.jsx'
+import ProfilePicker from './views/ProfilePicker.jsx'
+import { getActiveProfile } from './lib/profiles.js'
 import TabBar from './components/TabBar.jsx'
 import { startOrPreview, startPickerSheet } from './components/StartSheets.jsx'
 import ScrollTopButton from './components/ScrollTopButton.jsx'
@@ -501,6 +503,14 @@ function Page({ loc, render, under = false, scrollY = 0, motion = 'fade' }) {
 }
 
 export default function App() {
+  // The picker is a mobile feature: on the web the session is a cookie, and two
+  // profiles sharing one cookie jar would cross accounts. The web keeps the
+  // standard sign-in; the phone uses one Bearer token per profile.
+  if (!MOBILE) return <MainApp />
+  return getActiveProfile() ? <MainApp /> : <ProfilePicker />
+}
+
+function MainApp() {
   const boot = useStore(s => s.boot)
   const ready = useStore(s => s.ready)
   useEffect(() => { boot() }, [boot])

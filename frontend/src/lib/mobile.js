@@ -9,6 +9,7 @@
 //
 // Like the demo build, MOBILE is replaced at build time, so all of this folds away in
 // web bundles; the Capacitor plugins are only ever imported behind it.
+import { slotFile, slotName } from './profiles.js'
 import { t, tn } from './i18n-core.js'
 import { isoOf, todayISO } from './format.js'
 import { effectiveRoutineIds } from './history.js'
@@ -48,13 +49,13 @@ export async function nativePlatform() {
   }
 }
 
-const FILE = 'opengym-state.json'
+const FILE = slotFile('opengym-state', 'json')
 
 // Written whole to a second file first and then moved over the first, so a write cut short (the
 // app killed mid-write, the battery gone) never leaves a half file where the last good copy was.
 // A move that did not finish leaves the new copy under FILE_NEW: whichever of the two parses and
 // is the later one (`_ts`) is the copy.
-const FILE_NEW = 'opengym-state.next.json'
+const FILE_NEW = slotFile('opengym-state.next', 'json')
 
 export async function nativeLoad() {
   try {
@@ -88,7 +89,7 @@ export async function nativeSave(state) {
 // device chose, kept in its own file — never inside opengym-state.json, since that file's content
 // is exactly what pushState() PUTs to a server, and a device's own connection secret must never
 // travel as if it were training data.
-const REMOTE_FILE = 'opengym-remote.json'
+const REMOTE_FILE = slotFile('opengym-remote', 'json')
 
 // Small JSON files in the app's private data directory, for device facts that must not ride
 // in S (which syncs and exports): the pairing, and how the Coach runs on this phone.
@@ -382,7 +383,7 @@ export async function printHtml(html, name, { paper = 'a4', footer } = {}) {
 // The root is never pruned: a manual export saved there carries the same name, and nothing
 // tells it apart from an old automatic copy, so those stay for the person to clear (Import
 // backup still reads either kind).
-export const AUTO_BACKUP_DIR = 'openGym'
+export const AUTO_BACKUP_DIR = slotName('openGym')
 export const AUTO_BACKUP_KEEP = 14
 // Only the exact names writeAutoBackup gives its files are ever pruned; anything else someone
 // keeps in the folder is theirs.

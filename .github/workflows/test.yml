@@ -543,6 +543,14 @@ jobs:
           path: frontend/android/app/build/outputs/apk/offline/debug/*.apk
           retention-days: 7
           if-no-files-found: error
+      # The sideload debug build keeps INTERNET and the pairing flow, so it can be
+      # installed on the test phone and pointed at the real server.
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: opengym-sideload-debug-apk
+          path: frontend/android/app/build/outputs/apk/sideload/debug/*.apk
+          retention-days: 7
+          if-no-files-found: error
       - name: Stats
         if: always()
         working-directory: frontend/android

@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opengym-api
+  namespace: opengym
+  labels:
+    app.kubernetes.io/name: opengym-api
+    app.kubernetes.io/part-of: opengym
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: opengym-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: opengym-api
+        app.kubernetes.io/part-of: opengym
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: api
+          image: ghcr.io/duartesantos8/opengym-api:1.4.5
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          envFrom:
+            - secretRef:
+                name: opengym-env
+          env:
+            - name: PORT
+              value: "3000"
+            - name: DATA_DIR
+              value: /data
+            - name: TRUST_PROXY
+              value: "1"
+            - name: TMPDIR
+              value: /tmp
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 3
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 750m
+              memory: 512Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: opengym-data
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: opengym
+  labels:
+    app.kubernetes.io/name: opengym-api
+spec:
+  selector:
+    app.kubernetes.io/name: opengym-api
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http

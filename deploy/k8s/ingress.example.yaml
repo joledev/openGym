@@ -1,0 +1,26 @@
+# Copy to ingress.yaml on the server and replace gym.example.com with the real host.
+# The real file is NOT committed: the host must not live in the public repo.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: opengym
+  namespace: opengym
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+spec:
+  ingressClassName: traefik
+  tls:
+    - hosts: ["gym.example.com"]
+      secretName: gym-tls
+  rules:
+    - host: gym.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 8080

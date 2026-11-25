@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: opengym-data
+  namespace: opengym
+  labels:
+    app.kubernetes.io/name: opengym-api
+    app.kubernetes.io/part-of: opengym
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 5Gi

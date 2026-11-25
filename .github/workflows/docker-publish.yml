@@ -97,6 +97,7 @@ jobs:
           images: ghcr.io/${{ steps.repo.outputs.owner }}/opengym-${{ matrix.image }}
           tags: |
             type=raw,value=edge,enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=sha-${{ github.sha }},enable=${{ github.ref == 'refs/heads/main' }}
             type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
@@ -116,3 +117,56 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  # Runs only after every image in the matrix above is pushed. It updates the
+  # two Deployments by digest over SSH; the host, port, user and key live in the
+  # `production` environment, never in this public repository.
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      packages: read
+    concurrency:
+      group: opengym-deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image digests
+        id: digests
+        run: |
+          owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          api=$(docker buildx imagetools inspect "ghcr.io/$owner/opengym-api:sha-${GITHUB_SHA}" --format '{{json .Manifest.Digest}}' | tr -d '"')
+          web=$(docker buildx imagetools inspect "ghcr.io/$owner/opengym-web:sha-${GITHUB_SHA}" --format '{{json .Manifest.Digest}}' | tr -d '"')
+          echo "api=$api" >> "$GITHUB_OUTPUT"
+          echo "web=$web" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.OPENGYM_SSH_KEY }}
+          SSH_HOST: ${{ secrets.OPENGYM_SSH_HOST }}
+          SSH_PORT: ${{ secrets.OPENGYM_SSH_PORT }}
+          SSH_USER: ${{ secrets.OPENGYM_SSH_USER }}
+          KNOWN_HOSTS: ${{ secrets.OPENGYM_KNOWN_HOSTS }}
+          API_DIGEST: ${{ steps.digests.outputs.api }}
+          WEB_DIGEST: ${{ steps.digests.outputs.web }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_ed25519 -p "$SSH_PORT" \
+            -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$SSH_USER@$SSH_HOST" "deploy $API_DIGEST $WEB_DIGEST"

@@ -4661,3 +4661,7 @@ button.wl-summary{width:100%;padding:0 0 10px;text-align:start;border-radius:var
 
 /* Add set / Warm-up / Remove: 44px tall, the leading glyph on the card's content edge; wrapped siblings share the same edge */
 .wk-add{min-height:44px;margin-inline-start:-14px}
+
+/* Two people, one install: the active profile pill in Home's header. */
+.profile-pill { width: auto; min-width: 0; padding: 0 10px; gap: 5px; display: inline-flex; align-items: center; border-radius: 999px; font-size: var(--fs-footnote); font-weight: 600; }
+.profile-pill span { line-height: 1; }

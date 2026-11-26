@@ -1,0 +1,121 @@
+name: Release APK
+
+# The APK release, on a tag (or by hand for an existing tag). The signing key lives in the
+# `release` environment, never in the repository: the job stops until that environment's
+# reviewer approves it, and the key is decoded into $RUNNER_TEMP and deleted afterwards.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to publish (must be on main)'
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-apk-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: '26'
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    environment: release
+    permissions:
+      contents: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Resolve tag
+        id: tag
+        run: |
+          TAG='${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}'
+          case "$TAG" in v*) ;; *) echo "tag must start with v: $TAG" >&2; exit 1 ;; esac
+          git rev-parse --verify "refs/tags/$TAG^{commit}" >/dev/null
+          git fetch --no-tags origin main
+          git merge-base --is-ancestor "refs/tags/$TAG^{commit}" origin/main
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Every version agrees
+        run: node scripts/ci/release-check.mjs "${{ steps.tag.outputs.tag }}"
+
+      - name: Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Java
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+
+      - name: Install
+        working-directory: frontend
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Build the mobile bundle
+        working-directory: frontend
+        run: npm run build:mobile
+
+      - name: Assemble the sideload APK
+        working-directory: frontend/android
+        run: ./gradlew --no-daemon assembleSideloadRelease
+
+      - name: Sign and checksum
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: bash scripts/android/sign-apk-ci.sh "${{ steps.tag.outputs.version }}"
+
+      - name: Verify the signed APK
+        run: |
+          APK="release/openGym-${{ steps.tag.outputs.version }}.apk"
+          test -f "$APK"
+          BT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools/36.0.0"
+          [ -x "$BT/apksigner" ] || BT="$(ls -d "${ANDROID_HOME:-$ANDROID_SDK_ROOT}"/build-tools/* | sort -V | tail -1)"
+          "$BT/apksigner" verify --print-certs "$APK" | tee release/certs.txt
+          "$BT/aapt2" dump badging "$APK" | head -3
+          ( cd release && sha256sum -c "openGym-${{ steps.tag.outputs.version }}.apk.sha256" )
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2.2.2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: openGym ${{ steps.tag.outputs.tag }}
+          body_path: release/notes.md
+          files: |
+            release/openGym-${{ steps.tag.outputs.version }}.apk
+            release/openGym-${{ steps.tag.outputs.version }}.apk.sha256
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+
+      - name: Keep the artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: openGym-${{ steps.tag.outputs.version }}-apk
+          path: |
+            release/openGym-${{ steps.tag.outputs.version }}.apk
+            release/openGym-${{ steps.tag.outputs.version }}.apk.sha256
+            release/certs.txt
+          if-no-files-found: error
+          retention-days: 14

@@ -39,6 +39,22 @@ export function clearActiveProfile() {
   try { sessionStorage.removeItem(PROFILE_KEY) } catch { /* storage blocked */ }
 }
 
+// The other profile, or null when there is only one. The switch is set + reload:
+// the storage prefix and the native file names are worked out when the module is
+// first imported, so a reload is what makes the new profile's store.
+export function otherProfile() {
+  const cur = getActiveProfile()
+  return PROFILES.find(p => p.id !== cur)?.id || null
+}
+
+export function switchProfile(id) {
+  if (!isProfile(id)) throw new Error('unknown profile: ' + id)
+  if (id === getActiveProfile()) return false
+  setActiveProfile(id)
+  window.location.reload()
+  return true
+}
+
 // '' in tests keeps the old file names, so the existing suites do not change.
 export function slotSuffix() {
   const id = getActiveProfile()

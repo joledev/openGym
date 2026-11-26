@@ -4,6 +4,15 @@ Newest first. Each release is a `## vX.Y.Z (YYYY-MM-DD)` section, and the releas
 GitHub and GitLab are that section, word for word. New work goes under `## Unreleased` until the
 tag. Write it for the people using the app: what changed for them, short, no em dashes.
 
+## v1.5.0 (2026-11-25)
+
+**Jole y Krys, cada uno con su perfil y su rutina**
+- Perfil: elige Jole o Krys al abrir la app, y cambia con un toque desde Home o Settings. Cada perfil guarda sus rutinas, pesos, historial, medios y ajustes por separado.
+- Rutinas: calentamiento y enfriamiento de 15 minutos (extensible a 30) antes y después de cada sesión de fuerza. Sabado y domingo, solo caminadora.
+- Viernes: circuito superior, para no sumar pierna despues del jueves.
+- Progresion: doble progresion con RIR 2-3; descarga en la semana 6.
+- Servidor: sincronizacion por perfil contra gym.joledev.com, sin mezclar los datos de uno con los del otro.
+
 ## v1.4.5 (2026-11-14)
 
 **Apple Watch, redesigned and in step with the phone**

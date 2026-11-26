@@ -1,8 +1,8 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   PROFILES, isProfile, profileName, getActiveProfile, setActiveProfile,
-  clearActiveProfile, slotSuffix, slotName, slotFile, profilePrefix,
+  clearActiveProfile, slotSuffix, slotName, slotFile, profilePrefix, otherProfile, switchProfile,
 } from './profiles.js'
 
 beforeEach(() => { sessionStorage.clear() })
@@ -40,5 +40,27 @@ describe('profiles', () => {
     setActiveProfile('krys')
     clearActiveProfile()
     expect(getActiveProfile()).toBe(null)
+  })
+
+  it('knows the other profile', () => {
+    setActiveProfile('jole')
+    expect(otherProfile()).toBe('krys')
+    setActiveProfile('krys')
+    expect(otherProfile()).toBe('jole')
+  })
+
+  it('switches and reloads once', () => {
+    const reload = vi.spyOn(window.location, 'reload').mockImplementation(() => {})
+    setActiveProfile('jole')
+    expect(switchProfile('krys')).toBe(true)
+    expect(getActiveProfile()).toBe('krys')
+    expect(reload).toHaveBeenCalledTimes(1)
+    expect(switchProfile('krys')).toBe(false)
+    expect(reload).toHaveBeenCalledTimes(1)
+    reload.mockRestore()
+  })
+
+  it('rejects an unknown profile', () => {
+    expect(() => switchProfile('nobody')).toThrow()
   })
 })

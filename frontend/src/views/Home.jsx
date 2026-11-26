@@ -8,7 +8,9 @@ import { StreakFlame, StreakMeta, StreakParty } from '../components/Streak.jsx'
 import { StreakRuleWelcome } from '../components/StreakRule.jsx'
 import { fmtNum, fmtDate, todayISO, isoOf, weekStartOf, weekDayOffset, DAYS, DAYN } from '../lib/format.js'
 import { t, tn, dateLocale } from '../lib/i18n.js'
-import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, starterPlanSheet, bwDeltaColor, weighInsSheet } from '../sheets.jsx'
+import { MOBILE } from '../lib/mobile.js'
+import { getActiveProfile, profileName, otherProfile, switchProfile } from '../lib/profiles.js'
+import { bwSheet, goalSheet, dayOverrideSheet, calendarSheet, starterPlanSheet, bwDeltaColor, weighInsSheet, confirmSheet } from '../sheets.jsx'
 import { startOrPreview, startPickerSheet } from '../components/StartSheets.jsx'
 import { daySessionsStatus } from '../lib/day-sessions.js'
 import { deriveSessionName } from '../lib/session-merge.js'
@@ -43,9 +45,24 @@ export default function Home() {
   const nav = useNavigate()
   const S = useStore(s => s.S)
   const user = useStore(s => s.user)
+  const sync = useStore(s => s.sync)
   // The banner switched off and the sync stuck: a dot on the gear (Settings → Show connection status).
   const trouble = useConnectionTrouble()
   const [weekOffset, setWeekOffset] = useState(0)
+  // Mobile only: profiles are a phone feature (App.jsx). The pill is both the
+  // indicator of who is active and the way to change; it never reloads silently
+  // over a running workout or unsent changes.
+  const active = MOBILE ? getActiveProfile() : null
+  const other = active ? otherProfile() : null
+  const switchToOther = () => {
+    if (!other) return
+    const pending = sync?.pending || (sync?.status && sync.status !== 'ok' && sync.status !== 'idle')
+    const msg = S.active
+      ? t('Your workout stays saved on this profile. Switch now?')
+      : pending ? t('Some changes are still waiting to sync. Switch now?') : null
+    if (msg) confirmSheet({ title: t('Switch to {0}?', profileName(other)), message: msg, confirmText: t('Switch'), onConfirm: () => switchProfile(other) })
+    else switchProfile(other)
+  }
 
   const today = new Date()
   // A weekday can hold several routines. `todayRoutines` is the whole day; `routine` is the
@@ -138,6 +155,7 @@ export default function Home() {
     <div className="hdr">
       <SeasonDeco spot="header-bats" />
       <div><h1>{user ? t('Hi {0}', user.name) : 'openGym'}</h1><div className="sub">{today.toLocaleDateString(dateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}</div></div>
+      {active && <button className="iconbtn profile-pill" onClick={switchToOther} aria-label={t('Switch to {0}', profileName(other))}><Icon name="swap" /><span>{profileName(active)}</span></button>}
       <button className="iconbtn" data-tour="settings-gear" onClick={() => nav('/settings')} aria-label={trouble ? t('Settings') + ', ' + t('Connection problem') : t('Settings')}><Icon name="gear" />{trouble && <span className="tab-dot" aria-hidden="true" />}</button>
     </div>
     <TrainerNotice />

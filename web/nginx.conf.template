@@ -239,6 +239,7 @@ server {
     }
 
     gzip on;
+    gzip_proxied any;
     gzip_types text/plain text/css application/json application/javascript image/svg+xml;
     gzip_vary on;
     gzip_min_length 1024;

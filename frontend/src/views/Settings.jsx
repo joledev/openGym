@@ -53,6 +53,7 @@ import { nameIn, said } from '../lib/a11y-name.js'
 import { effectiveLang } from '../lib/default-lang.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, isAndroid, shareExport, shareExportBlob, syncReminder } from '../lib/mobile.js'
+import { getActiveProfile, profileName, otherProfile, switchProfile } from '../lib/profiles.js'
 import { NUDGE_COPY, NUDGE_TONES, toneOf } from '../lib/nudge.js'
 import { referencedFiles } from '../lib/media-refs.js'
 import { mediaStore } from '../lib/media-store.js'
@@ -430,6 +431,16 @@ export default function Settings({ page = null, find = null, via = null, entryKe
   // A workout running here is kept aside by the sign-out (useStore stashActive): the confirm says so.
   const running = () => S.active ? ' ' + t('You have a workout running. It waits on this device until you’re back on this account.') : ''
   const leave = (kind, after) => leaveServer(kind, { exportBackup: doExport, exportBackupZip: doExportZip, done: r => { nav('/home'); if (r.stashed) toast(kept); else if (after) toast(after) } })
+  const switchToOther = () => {
+    const other = otherProfile()
+    if (!other) return
+    const pending = sync?.pending || (sync?.status && sync.status !== 'ok' && sync.status !== 'idle')
+    const msg = S.active ? t('Your workout stays saved on this profile. Switch now?')
+      : pending ? t('Some changes are still waiting to sync. Switch now?') : null
+    if (msg) confirmSheet({ title: t('Switch to {0}?', profileName(other)), message: msg, confirmText: t('Switch'), onConfirm: () => switchProfile(other) })
+    else switchProfile(other)
+  }
+
   const disconnect = () => confirmSheet({
     title: t('Disconnect from your server?'),
     message: t('This phone switches back to local-only and its copy of your account is removed. First it checks that your server has every change. If not, you choose what happens to them.') + running(),
@@ -1359,6 +1370,10 @@ export default function Settings({ page = null, find = null, via = null, entryKe
     account: () => <>
       {/* The profile picture (lib/avatar.js): every mode but the demo, kept like any other photo. */}
       {!DEMO && <AvatarSection name={user?.name || null} signedIn={!!user} />}
+      {/* Two people, one install: the active one, and the one tap that changes it. */}
+      {MOBILE && <Section title={t('Profile')}>
+        <Row icon="swap" iconTint="var(--acc)" title={t('Switch profile')} subtitle={t('Now: {0}', profileName(getActiveProfile()))} accessory="chevron" onClick={switchToOther} />
+      </Section>}
       {/* The server: which one, which account, how that stands, "Sync now". A paired phone's
           Admin and Disconnect sit in the same block; a browser's account rows follow in their own. */}
       {user && !DEMO && <ServerSyncSection>

@@ -56,3 +56,12 @@ frontend/ios/App/WatchCore/.build/
 /dist/
 .wrangler/
 .taste-skill/
+
+# Android signing (the key lives in the release environment / an offline backup)
+*.jks
+*.keystore
+*.pass
+keystore/
+
+# release-apk.yml's signing output
+release/

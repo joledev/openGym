@@ -341,6 +341,7 @@ export const SEARCH = [
   { page: 'about', title: 'In Safari: Share → Add to Home Screen', icon: 'share', tint: 'var(--blue)', kw: 'install app home screen tip pwa', when: c => c.installTip && !c.androidWeb && !c.desktopWeb },
   { page: 'about', title: 'In Chrome or Edge: the install icon in the address bar', icon: 'share', tint: 'var(--blue)', kw: 'install app home screen tip pwa desktop', when: c => c.installTip && c.desktopWeb },
   // Account
+  { page: 'account', title: 'Switch profile', icon: 'swap', tint: 'var(--acc)', kw: 'switch profile jole krys cambiar perfil', when: c => c.mobile },
   { page: 'account', title: 'Sync now', net: true, icon: 'reset', tint: 'var(--acc)', kw: 'server sync upload refresh status connection', when: c => !!c.user && !c.demo && c.synced },
   { page: 'account', title: 'Cloudflare Access', net: true, icon: 'key', tint: 'var(--orange)', kw: 'cloudflare access zero trust service token header proxy', when: c => c.mobile && !!c.user && !c.demo && c.synced },
   { page: 'account', title: 'Passkeys', icon: 'fingerprint', tint: 'var(--acc)', kw: 'passkey security login', when: signedInWeb },
